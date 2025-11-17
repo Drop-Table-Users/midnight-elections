@@ -416,7 +416,7 @@ async function main() {
         console.log("Opening election...");
         const result = await txInterface.open_election();
         console.log(
-          `open_election submitted. Tx hash: ${result.public.txHash ?? "pending"}`
+          `Opened. Inspect at: ${config.MEXPLORER_URL}/transaction/0x${result.public.txHash}/${result.public.blockHeight}\n`
         );
         break;
       }
@@ -424,7 +424,7 @@ async function main() {
         console.log("Closing election...");
         const result = await txInterface.close_election();
         console.log(
-          `close_election submitted. Tx hash: ${result.public.txHash ?? "pending"}`
+          `Closed. Inspect at: ${config.MEXPLORER_URL}/transaction/0x${result.public.txHash}/${result.public.blockHeight}\n`
         );
         break;
       }
@@ -436,7 +436,7 @@ async function main() {
         console.log("Registering candidate...");
         const result = await txInterface.register_candidate(candidateId);
         console.log(
-          `register_candidate submitted. Tx hash: ${result.public.txHash ?? "pending"}`
+          `Registered. Inspect at: ${config.MEXPLORER_URL}/transaction/0x${result.public.txHash}/${result.public.blockHeight}\n`
         );
         break;
       }
@@ -452,7 +452,7 @@ async function main() {
         console.log("Casting vote...");
         const result = await txInterface.cast_vote();
         console.log(
-          `cast_vote submitted. Tx hash: ${result.public.txHash ?? "pending"}`
+          `Vote cast. Inspect at: ${config.MEXPLORER_URL}/transaction/0x${result.public.txHash}/${result.public.blockHeight}\n`
         );
         break;
       }

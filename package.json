@@ -12,12 +12,14 @@
     "build:counter": "tsc -p tsconfig.counter.json",
     "build:elections": "tsc -p tsconfig.elections.json",
     "build:registry": "tsc -p tsconfig.registry.json",
+    "build:elections-api": "tsc -p tsconfig.elections-api.json",
     "build": "npm run build:counter && npm run build:elections && npm run build:registry",
     "deploy:counter": "npm run build:counter && node dist-counter/deploy.js",
     "deploy:elections": "npm run build:elections && node dist-elections/deploy.js",
     "interact:elections": "npm run build:elections && node dist-elections/interact.js",
     "deploy:registry": "npm run build:registry && node dist-registry/deploy.js",
-    "deploy": "npm run deploy:counter"
+    "deploy": "npm run deploy:counter",
+    "start:elections-api": "npm run build:elections-api && node dist-elections-api/server.js"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.9.0",
@@ -26,15 +28,17 @@
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "2.0.2",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "2.0.2",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "2.0.2",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "2.0.2",
     "@midnight-ntwrk/midnight-js-network-id": "2.0.2",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "2.0.2",
     "@midnight-ntwrk/midnight-js-types": "2.0.2",
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
+    "express": "^4.21.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/express": "^4.17.25",
     "@types/node": "^24.4.0",
     "@types/ws": "^8.5.10",
     "typescript": "^5.9.2"

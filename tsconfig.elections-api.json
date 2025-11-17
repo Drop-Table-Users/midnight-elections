@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist-elections-api",
+    "rootDir": "./elections-api",
+    "tsBuildInfoFile": "./dist-elections-api/.tsbuildinfo"
+  },
+  "include": ["elections-api/**/*"]
+}

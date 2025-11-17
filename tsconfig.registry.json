@@ -2,7 +2,8 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist-registry",
-    "rootDir": "./src-registry"
+    "rootDir": "./src-registry",
+    "tsBuildInfoFile": "./dist-registry/.tsbuildinfo"
   },
   "include": ["src-registry/**/*"]
 }

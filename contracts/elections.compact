@@ -1,0 +1,89 @@
+pragma language_version >= 0.18;
+
+import CompactStandardLibrary;
+import "./Crypto";
+
+export struct Ballot {
+  election_id: Bytes<32>;
+  candidate_id: Bytes<32>;
+  credential: SignedCredentialSubject;
+}
+
+export ledger election_admin: ZswapCoinPublicKey;
+export ledger trusted_issuer_public_key: CurvePoint;
+export ledger active_election_id: Bytes<32>;
+export ledger election_active: Uint<8>;
+export ledger candidate_status: Map<Bytes<32>, Uint<1>>;
+export ledger vote_counts: Map<Bytes<32>, Uint<64>>;
+export ledger voter_nullifiers: Map<Bytes<32>, Uint<1>>;
+export ledger candidate_registry_initialized: Uint<1>;
+export ledger voter_nullifiers_initialized: Uint<1>;
+
+witness get_ballot(): Ballot; // Private ballot details and credential
+
+export circuit assert_is_admin(): [] {
+  assert(election_admin == ownPublicKey(), "Only the election administrator can perform this action");
+}
+
+constructor(_trusted_issuer_public_key: CurvePoint, _election_id: Bytes<32>) {
+  election_admin = ownPublicKey();
+  trusted_issuer_public_key = disclose(_trusted_issuer_public_key);
+  active_election_id = disclose(_election_id);
+  election_active = 0 as Uint<8>;
+  candidate_registry_initialized = 0 as Uint<1>;
+  voter_nullifiers_initialized = 0 as Uint<1>;
+}
+
+export circuit open_election(): [] {
+  assert_is_admin();
+  election_active = 1 as Uint<8>;
+}
+
+export circuit close_election(): [] {
+  assert_is_admin();
+  election_active = 0 as Uint<8>;
+}
+
+export circuit register_candidate(candidate_id: Bytes<32>): [] {
+  assert_is_admin();
+  const candidate_commitment: Bytes<32> = persistentHash<Bytes<32>>(candidate_id);
+  const disclosed_commitment: Bytes<32> = disclose(candidate_commitment);
+  const registry_ready: Uint<1> = candidate_registry_initialized;
+  if (registry_ready == 1 as Uint<1>) {
+    const already_registered: Uint<1> = candidate_status.lookup(disclosed_commitment);
+    assert(already_registered == 0 as Uint<1>, "Candidate already registered");
+  } else {
+    candidate_registry_initialized = 1 as Uint<1>;
+  }
+  candidate_status.insert(disclosed_commitment, 1 as Uint<1>);
+  vote_counts.insert(disclosed_commitment, 0 as Uint<64>);
+}
+
+export circuit cast_vote(): [] {
+  assert(election_active == 1 as Uint<8>, "Election is not active");
+  const ballot = get_ballot();
+  assert(ballot.election_id == active_election_id, "Ballot is for a different election");
+
+  const credential = ballot.credential;
+  assert(credential.subject.id == ownPublicKey().bytes, "Ballot credential does not belong to the sender");
+  const credential_hash: Bytes<32> = subject_hash(credential.subject);
+
+  const ballot_commitment: Bytes<32> = persistentHash<Bytes<32>>(ballot.candidate_id);
+  const disclosed_commitment: Bytes<32> = disclose(ballot_commitment);
+  const candidate_registered: Uint<1> = candidate_status.lookup(disclosed_commitment);
+  assert(candidate_registered == 1 as Uint<1>, "Unknown candidate");
+
+  const voter_nullifier: Bytes<32> = disclose(credential_hash);
+  const nullifier_ready: Uint<1> = voter_nullifiers_initialized;
+  if (nullifier_ready == 1 as Uint<1>) {
+    const has_voted: Uint<1> = voter_nullifiers.lookup(voter_nullifier);
+    assert(has_voted == 0 as Uint<1>, "Voter has already cast a ballot");
+  } else {
+    voter_nullifiers_initialized = 1 as Uint<1>;
+  }
+
+  const current_votes: Uint<64> = vote_counts.lookup(disclosed_commitment);
+  const updated_votes: Uint<64> = (current_votes + 1) as Uint<64>;
+  vote_counts.insert(disclosed_commitment, updated_votes);
+  voter_nullifiers.insert(voter_nullifier, 1 as Uint<1>);
+}

@@ -1,0 +1,10 @@
+midnight-level-db
+dist
+contracts/managed
+node_modules
+deployment.json
+tsconfig.elections.tsbuildinfo
+tsconfig.registry.tsbuildinfo
+dist-registry
+dist-elections
+registry-deployment.json

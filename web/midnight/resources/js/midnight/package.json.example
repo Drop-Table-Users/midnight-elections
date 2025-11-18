@@ -1,0 +1,33 @@
+{
+  "name": "midnight-frontend-integration",
+  "version": "1.0.0",
+  "description": "Frontend TypeScript integration for Midnight blockchain wallet connection",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js": "latest"
+  },
+  "keywords": [
+    "midnight",
+    "blockchain",
+    "wallet",
+    "web3",
+    "zero-knowledge",
+    "laravel"
+  ],
+  "author": "",
+  "license": "MIT",
+  "notes": {
+    "midnight-js": "Replace with actual Midnight JS SDK package name when available",
+    "usage": "This is an example package.json. Integrate dependencies into your main Laravel project package.json",
+    "vite": "Works with Laravel Vite plugin - no additional bundler config needed"
+  }
+}

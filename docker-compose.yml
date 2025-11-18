@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Midnight Proof Server - Required for ZK proof generation
+  proof-server:
+    image: midnightnetwork/proof-server:latest
+    container_name: midnight-proof-server
+    ports:
+      - "6300:6300"
+    command: ["midnight-proof-server", "--network", "testnet"]
+    restart: unless-stopped
+    networks:
+      - midnight-network
+
+  # Elections API - Node.js/Express API for contract interactions
+  elections-api:
+    build:
+      context: ./contract
+      dockerfile: Dockerfile.elections-api
+    container_name: elections-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PROOF_SERVER=http://proof-server:6300
+      - MIDNIGHT_INDEXER=https://indexer.testnet-02.midnight.network/api/v1/graphql
+      - MIDNIGHT_INDEXER_WS=wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws
+      - MIDNIGHT_NODE=https://rpc.testnet-02.midnight.network
+    volumes:
+      - ./contract:/app
+      - /app/node_modules
+      - ./contract/midnight-level-db:/app/midnight-level-db
+      - ./contract/contracts:/app/contracts
+    depends_on:
+      - proof-server
+    restart: unless-stopped
+    networks:
+      - midnight-network
+    command: node dist-elections-api/server.js
+
+  # Laravel Web Application
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: midnight-web
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=https://midnight.dev.v2.sk
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/database.sqlite
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SESSION_DRIVER=database
+      - ELECTIONS_API_URL=http://elections-api:3000
+      - AUTO_MIGRATE=true
+      - AUTO_SEED=true
+    volumes:
+      - ./web:/app
+      - /app/vendor
+      - /app/node_modules
+      - ./web/database/database.sqlite:/app/database/database.sqlite
+      - ./web/laravel-midnight:/app/laravel-midnight:ro
+      - ./web/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+    depends_on:
+      - elections-api
+    restart: unless-stopped
+    networks:
+      - midnight-network
+    # Command handled by entrypoint script
+
+  # Queue Worker for background jobs
+  queue-worker:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: midnight-queue
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/database.sqlite
+      - QUEUE_CONNECTION=database
+      - AUTO_MIGRATE=false
+      - AUTO_SEED=false
+    volumes:
+      - ./web:/app
+      - /app/vendor
+      - ./web/database/database.sqlite:/app/database/database.sqlite
+      - ./web/laravel-midnight:/app/laravel-midnight:ro
+      - ./web/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - midnight-network
+    entrypoint: ["/sbin/tini", "--"]
+    command: ["php", "artisan", "queue:work", "--tries=3", "--sleep=3"]
+
+networks:
+  midnight-network:
+    driver: bridge

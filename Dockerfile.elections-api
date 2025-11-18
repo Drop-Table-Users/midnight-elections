@@ -1,0 +1,100 @@
+# Elections API Dockerfile - Multi-stage build
+FROM node:20-alpine AS builder
+
+# Install build dependencies and tools
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl \
+    bash \
+    ca-certificates
+
+# Install Midnight Compact compiler
+RUN curl --proto '=https' --tlsv1.2 -LsSf \
+    https://github.com/midnightntwrk/compact/releases/download/compact-v0.2.0/compact-installer.sh | sh
+
+# Add compact to PATH
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Update compact and install default compiler
+RUN compact update
+
+# Verify installations
+RUN node --version && \
+    npm --version && \
+    compact --version
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig*.json ./
+
+# Install ALL dependencies (including dev dependencies for building)
+RUN npm ci
+
+# Copy source code and contracts
+COPY elections-api/ ./elections-api/
+COPY contracts/ ./contracts/
+COPY compact-wrapper.sh ./
+
+# Build TypeScript
+RUN npm run build:elections-api
+
+# Production stage
+FROM node:20-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    ca-certificates \
+    tini
+
+# Install Midnight Compact compiler for runtime
+RUN curl --proto '=https' --tlsv1.2 -LsSf \
+    https://github.com/midnightntwrk/compact/releases/download/compact-v0.2.0/compact-installer.sh | sh
+
+# Add compact to PATH
+ENV PATH="/root/.local/bin:/root/.compact/bin:${PATH}"
+
+# Update compact and install default compiler
+RUN compact update
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy built application from builder
+COPY --from=builder /app/dist-elections-api ./dist-elections-api
+COPY --from=builder /app/contracts ./contracts
+COPY --from=builder /app/elections-api ./elections-api
+COPY --from=builder /app/tsconfig*.json ./
+
+# Create directory for midnight-level-db
+RUN mkdir -p /app/midnight-level-db
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set proper permissions
+RUN chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
+# Expose ports
+EXPOSE 3000
+
+# Use custom entrypoint
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
+
+# Start the API server
+CMD ["node", "dist-elections-api/server.js"]

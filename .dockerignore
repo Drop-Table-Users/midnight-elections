@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+*.md
+.env
+.env.*
+dist-*
+midnight-level-db
+*.log
+.idea
+.vscode

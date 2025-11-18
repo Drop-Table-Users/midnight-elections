@@ -19,7 +19,7 @@ import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
 import { WebSocket } from "ws";
 import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import * as Rx from "rxjs";
 import * as config from "./config.js";
 
@@ -185,9 +185,9 @@ const loadElectionsContractModule = async () => {
         throw new Error("Contract artifact not found. Run npm run compile:elections");
     }
 
-    // Convert to file:// URL for import (works in both Windows and WSL)
-    const contractModuleUrl = new URL(`file://${contractModulePath.replace(/\\/g, '/')}`);
-    return import(contractModuleUrl.href);
+    // Convert Windows path to file URL for ESM import
+    const contractModuleUrl = pathToFileURL(contractModulePath).href;
+    return import(contractModuleUrl);
 };
 
 const createProviders = async (walletProvider: any) => {
@@ -404,4 +404,203 @@ export const getWalletStatus = async (): Promise<WalletStatus> => {
             synced: false,
         };
     }
+};
+
+export interface RegisterVoterOptions {
+    walletAddress: string;
+    fullName: string;
+    nationalId: string;
+    dateOfBirth: string; // ISO date string
+}
+
+export interface RegisterVoterResult {
+    credentialHash: string;
+    message: string;
+}
+
+/**
+ * Register a voter by creating a credential hash from their KYC data.
+ * This credential hash is used to prevent double voting while maintaining privacy.
+ */
+export const registerVoter = async (options: RegisterVoterOptions): Promise<RegisterVoterResult> => {
+    // Import crypto module for hashing
+    const crypto = await import("crypto");
+
+    // Parse the date of birth to Unix timestamp
+    const birthDate = new Date(options.dateOfBirth);
+    const birthTimestamp = BigInt(Math.floor(birthDate.getTime() / 1000));
+
+    // Split full name into first and last name (simple split on first space)
+    const nameParts = options.fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
+    // Convert strings to 32-byte arrays (hash and pad/truncate to 32 bytes)
+    const stringToBytes32 = (str: string): Uint8Array => {
+        const hash = crypto.createHash('sha256').update(str, 'utf8').digest();
+        return new Uint8Array(hash);
+    };
+
+    // Create credential subject structure
+    const credentialSubject = {
+        id: stringToBytes32(options.walletAddress),
+        first_name: stringToBytes32(firstName),
+        last_name: stringToBytes32(lastName),
+        national_identifier: stringToBytes32(options.nationalId),
+        birth_timestamp: birthTimestamp,
+    };
+
+    // Create a deterministic hash of the credential subject
+    // This hash serves as the voter's nullifier to prevent double voting
+    const credentialData = JSON.stringify({
+        id: Array.from(credentialSubject.id),
+        first_name: Array.from(credentialSubject.first_name),
+        last_name: Array.from(credentialSubject.last_name),
+        national_identifier: Array.from(credentialSubject.national_identifier),
+        birth_timestamp: credentialSubject.birth_timestamp.toString(),
+    });
+
+    const credentialHash = crypto.createHash('sha256')
+        .update(credentialData, 'utf8')
+        .digest('hex');
+
+    return {
+        credentialHash: `0x${credentialHash}`,
+        message: "Voter registered successfully. The credential hash will prevent double voting.",
+    };
+};
+
+export interface ElectionResultsOptions {
+    contractAddress?: string;
+}
+
+export interface CandidateResult {
+    candidateId: string;
+    votes: string;
+}
+
+export interface ElectionResultsResponse {
+    results: CandidateResult[];
+    totalVotes: string;
+    contractAddress: string;
+}
+
+/**
+ * Get election results by querying the vote_counts map from the blockchain.
+ * This queries the public ledger data to get vote counts for each candidate.
+ */
+export const getElectionResults = async (options: ElectionResultsOptions = {}): Promise<ElectionResultsResponse> => {
+    const contractAddress = loadContractAddress(options.contractAddress);
+
+    // Create public data provider to query blockchain
+    const publicDataProvider = indexerPublicDataProvider(
+        config.NETWORK_CONFIG.INDEXER,
+        config.NETWORK_CONFIG.INDEXER_WS
+    );
+
+    // Query contract state from blockchain
+    const contractState = await publicDataProvider.queryContractState(contractAddress);
+    if (!contractState) {
+        throw new Error(`No contract state found at ${contractAddress}`);
+    }
+
+    // Load the contract module to access ledger state
+    const ElectionsModule = await loadElectionsContractModule();
+
+    // Parse the contract state to get vote_counts map
+    // The vote_counts is a Map<Bytes<32>, Uint<64>> where key is candidate_id and value is vote count
+    const results: CandidateResult[] = [];
+    let totalVotes = 0n;
+
+    // Access the ledger state - vote_counts is a public map
+    if (contractState.data && contractState.data.vote_counts) {
+        const voteCounts = contractState.data.vote_counts;
+
+        // Iterate through all entries in the vote_counts map
+        for (const [candidateIdBytes, voteCount] of Object.entries(voteCounts)) {
+            // Convert Uint8Array candidate ID to hex string
+            const candidateId = `0x${Buffer.from(candidateIdBytes as any).toString('hex')}`;
+            const votes = BigInt(voteCount as any);
+
+            results.push({
+                candidateId,
+                votes: votes.toString(),
+            });
+
+            totalVotes += votes;
+        }
+    }
+
+    return {
+        results: results.sort((a, b) => Number(BigInt(b.votes) - BigInt(a.votes))), // Sort by votes descending
+        totalVotes: totalVotes.toString(),
+        contractAddress,
+    };
+};
+
+export interface VerifyVoteOptions {
+    credentialHash: string;
+    contractAddress?: string;
+}
+
+export interface VerifyVoteResponse {
+    voted: boolean;
+    credentialHash: string;
+    message: string;
+    contractAddress: string;
+}
+
+/**
+ * Verify if a vote was cast by checking the voter_nullifiers map on the blockchain.
+ * This allows voters to confirm their vote was counted without revealing their choice.
+ */
+export const verifyVote = async (options: VerifyVoteOptions): Promise<VerifyVoteResponse> => {
+    const contractAddress = loadContractAddress(options.contractAddress);
+    const credentialHash = options.credentialHash.startsWith("0x")
+        ? options.credentialHash.slice(2)
+        : options.credentialHash;
+
+    if (credentialHash.length !== 64) {
+        throw new Error("Credential hash must be a 32-byte hex string (64 hex characters)");
+    }
+
+    // Create public data provider to query blockchain
+    const publicDataProvider = indexerPublicDataProvider(
+        config.NETWORK_CONFIG.INDEXER,
+        config.NETWORK_CONFIG.INDEXER_WS
+    );
+
+    // Query contract state from blockchain
+    const contractState = await publicDataProvider.queryContractState(contractAddress);
+    if (!contractState) {
+        throw new Error(`No contract state found at ${contractAddress}`);
+    }
+
+    // Check if the credential hash exists in voter_nullifiers map
+    // voter_nullifiers is a Map<Bytes<32>, Uint<1>> where presence indicates vote was cast
+    let voted = false;
+
+    if (contractState.data && contractState.data.voter_nullifiers) {
+        const voterNullifiers = contractState.data.voter_nullifiers;
+
+        // Check if this credential hash is in the nullifiers map
+        // The key is the credential hash as bytes
+        const nullifierKey = credentialHash.toLowerCase();
+
+        // Check if the key exists in the map
+        if (voterNullifiers[nullifierKey] !== undefined) {
+            voted = true;
+        }
+    }
+
+    const message = voted
+        ? "Your vote was successfully recorded on the blockchain. Thank you for participating!"
+        : "No vote found for this credential hash. Please ensure you have voted and the transaction was confirmed.";
+
+    return {
+        voted,
+        credentialHash: `0x${credentialHash}`,
+        message,
+        contractAddress,
+    };
 };

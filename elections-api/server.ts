@@ -9,8 +9,14 @@ import {
     openElection,
     registerCandidate,
     type RegisterCandidateOptions,
+    registerVoter,
+    type RegisterVoterOptions,
     vote,
     type VoteOptions,
+    getElectionResults,
+    type ElectionResultsOptions,
+    verifyVote,
+    type VerifyVoteOptions,
 } from "./actions.js";
 import * as config from "./config.js";
 
@@ -315,6 +321,104 @@ export const createApp = () => {
             res.status(500).json({error: message});
         } finally {
             actionInFlight = null;
+        }
+    });
+
+    app.post("/register-voter", async (req: Request, res: Response) => {
+        try {
+            const body = req.body;
+
+            if (!body || typeof body !== "object") {
+                res.status(400).json({error: "Request body is required"});
+                return;
+            }
+
+            if (typeof body.wallet_address !== "string" || !body.wallet_address) {
+                res.status(400).json({error: "wallet_address is required"});
+                return;
+            }
+
+            if (typeof body.kyc_id !== "number" && typeof body.kyc_id !== "string") {
+                res.status(400).json({error: "kyc_id is required"});
+                return;
+            }
+
+            // For now, we create a simple credential hash
+            // In production, you would fetch KYC data from database
+            const options: RegisterVoterOptions = {
+                walletAddress: body.wallet_address,
+                fullName: body.full_name || "Unknown User",
+                nationalId: body.national_id || "UNKNOWN",
+                dateOfBirth: body.date_of_birth || new Date().toISOString(),
+            };
+
+            const result = await registerVoter(options);
+
+            res.status(201).json({
+                success: true,
+                credential_hash: result.credentialHash,
+                tx_hash: result.credentialHash, // For compatibility with existing code
+                message: result.message,
+            });
+        } catch (error) {
+            console.error("POST /register-voter failed:", error);
+            const message =
+                error instanceof Error ? error.message : "Voter registration failed";
+            res.status(500).json({error: message});
+        }
+    });
+
+    app.get("/results/:contractAddress?", async (req: Request, res: Response) => {
+        try {
+            const contractAddress = req.params.contractAddress;
+            const options: ElectionResultsOptions = contractAddress
+                ? { contractAddress }
+                : {};
+
+            const results = await getElectionResults(options);
+
+            res.status(200).json({
+                success: true,
+                ...results,
+            });
+        } catch (error) {
+            console.error("GET /results failed:", error);
+            const message =
+                error instanceof Error ? error.message : "Failed to get election results";
+            res.status(500).json({error: message});
+        }
+    });
+
+    app.post("/verify-vote", async (req: Request, res: Response) => {
+        try {
+            const body = req.body;
+
+            if (!body || typeof body !== "object") {
+                res.status(400).json({error: "Request body is required"});
+                return;
+            }
+
+            if (typeof body.credential_hash !== "string" || !body.credential_hash) {
+                res.status(400).json({error: "credential_hash is required"});
+                return;
+            }
+
+            const options: VerifyVoteOptions = {
+                credentialHash: body.credential_hash,
+                contractAddress: body.contract_address,
+            };
+
+            const result = await verifyVote(options);
+
+            res.status(200).json({
+                success: true,
+                ...result,
+            });
+        } catch (error) {
+            console.error("POST /verify-vote failed:", error);
+            const message =
+                error instanceof Error ? error.message : "Vote verification failed";
+            res.status(500).json({error: message});
         }
     });
 

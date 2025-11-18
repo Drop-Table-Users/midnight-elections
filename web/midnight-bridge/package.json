@@ -1,0 +1,49 @@
+{
+  "name": "midnight-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "node --loader ts-node/esm src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "midnight",
+    "bridge",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Midnight Network Bridge Service",
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.9.0",
+    "@midnight-ntwrk/ledger": "^4.0.0",
+    "@midnight-ntwrk/midnight-js-contracts": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-network-id": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "^2.0.2",
+    "@midnight-ntwrk/midnight-js-types": "^2.0.2",
+    "@midnight-ntwrk/wallet": "^5.0.0",
+    "@midnight-ntwrk/wallet-api": "^5.0.0",
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "rxjs": "^7.8.2",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

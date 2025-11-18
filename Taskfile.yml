@@ -1,0 +1,205 @@
+version: '3'
+
+# Task runner for contract operations
+# Install: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+# Or on Windows: choco install go-task
+
+vars:
+  WALLET_SEED:
+    sh: echo "${WALLET_SEED:-}"
+  CONTRACT_ADDRESS:
+    sh: cat deployment.json 2>/dev/null | jq -r '.contractAddress' || echo ""
+
+tasks:
+  # Default task
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # Installation
+  install:
+    desc: Install contract dependencies
+    cmds:
+      - npm install
+
+  # Compilation
+  compile:
+    desc: Compile all contracts
+    cmds:
+      - npm run compile
+
+  compile:counter:
+    desc: Compile counter contract
+    cmds:
+      - npm run compile:counter
+
+  compile:elections:
+    desc: Compile elections contract
+    cmds:
+      - npm run compile:elections
+
+  compile:registry:
+    desc: Compile registry contract
+    cmds:
+      - npm run compile:registry
+
+  compile:identity:
+    desc: Compile identity contract
+    cmds:
+      - npm run compile:identity
+
+  compile:crypto:
+    desc: Compile crypto contract
+    cmds:
+      - npm run compile:crypto
+
+  # Building
+  build:
+    desc: Build all TypeScript
+    cmds:
+      - npm run build
+
+  build:elections:
+    desc: Build elections contract
+    cmds:
+      - npm run build:elections
+
+  build:elections-api:
+    desc: Build elections API
+    cmds:
+      - npm run build:elections-api
+
+  # Deployment
+  deploy:elections:
+    desc: Deploy elections contract
+    deps: [build:elections]
+    cmds:
+      - echo "y" | npm run deploy:elections
+
+  deploy:counter:
+    desc: Deploy counter contract
+    deps: [build:counter]
+    cmds:
+      - echo "y" | npm run deploy:counter
+
+  deploy:registry:
+    desc: Deploy registry contract
+    deps: [build:registry]
+    cmds:
+      - echo "y" | npm run deploy:registry
+
+  # Elections API
+  api:start:
+    desc: Start elections API server
+    deps: [build:elections-api]
+    cmds:
+      - npm run start:elections-api
+
+  api:dev:
+    desc: Start API in development mode with auto-reload
+    cmds:
+      - npx nodemon --watch elections-api --ext ts --exec "npm run start:elections-api"
+
+  # Contract interaction
+  interact:
+    desc: Interact with deployed elections contract
+    cmds:
+      - npm run interact:elections
+
+  # Information
+  info:
+    desc: Show deployed contract information
+    cmds:
+      - |
+        if [ -f deployment.json ]; then
+          echo "=== Deployed Contract ==="
+          cat deployment.json | jq '.'
+        else
+          echo "No deployment found. Run 'task deploy:elections' first."
+        fi
+
+  contract:address:
+    desc: Show contract address
+    cmds:
+      - |
+        if [ -f deployment.json ]; then
+          cat deployment.json | jq -r '.contractAddress'
+        else
+          echo "No deployment found."
+        fi
+
+  # Proof server
+  proof:start:
+    desc: Start local proof server
+    cmds:
+      - docker run -p 6300:6300 midnightnetwork/proof-server -- 'midnight-proof-server --network testnet'
+
+  proof:stop:
+    desc: Stop local proof server
+    cmds:
+      - docker stop $(docker ps -q --filter ancestor=midnightnetwork/proof-server)
+
+  # Clean
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf dist-*
+      - rm -rf midnight-level-db
+      - echo "Build artifacts cleaned"
+
+  clean:all:
+    desc: Clean all generated files including node_modules
+    cmds:
+      - task: clean
+      - rm -rf node_modules
+      - echo "All cleaned"
+
+  # Development
+  dev:
+    desc: Full development setup
+    cmds:
+      - task: install
+      - task: compile:elections
+      - task: build:elections-api
+      - echo "Development setup complete"
+
+  # Testing
+  test:
+    desc: Run tests
+    cmds:
+      - npm test
+
+  # Utilities
+  check:compact:
+    desc: Check Midnight compact installation
+    cmds:
+      - which compact || echo "Compact not found in PATH"
+      - compact --version || echo "Compact not installed"
+
+  check:zkir:
+    desc: Check zkir installation
+    cmds:
+      - which zkir || echo "zkir not found in PATH"
+      - zkir --version || echo "zkir not installed"
+
+  check:node:
+    desc: Check Node.js installation
+    cmds:
+      - node --version
+      - npm --version
+
+  check:all:
+    desc: Check all dependencies
+    deps: [check:node, check:compact, check:zkir]
+
+  # Watch mode
+  watch:elections:
+    desc: Watch and recompile elections contract
+    cmds:
+      - npx nodemon --watch contracts/elections.compact --ext compact --exec "task compile:elections"
+
+  watch:api:
+    desc: Watch and rebuild elections API
+    cmds:
+      - npx nodemon --watch elections-api --ext ts --exec "task build:elections-api"

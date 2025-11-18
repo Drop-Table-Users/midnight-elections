@@ -1,0 +1,308 @@
+/**
+ * Midnight Laravel Package - Styles
+ *
+ * Core styles for the Midnight blockchain integration including:
+ * - Wallet UI components
+ * - Transaction status indicators
+ * - Loading states
+ * - Error and success messages
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        /* Color Tokens */
+        --midnight-primary: #3b82f6;
+        --midnight-primary-hover: #2563eb;
+        --midnight-primary-active: #1d4ed8;
+
+        --midnight-success: #10b981;
+        --midnight-success-light: #d1fae5;
+        --midnight-success-dark: #047857;
+
+        --midnight-error: #ef4444;
+        --midnight-error-light: #fee2e2;
+        --midnight-error-dark: #991b1b;
+
+        --midnight-warning: #f59e0b;
+        --midnight-warning-light: #fef3c7;
+        --midnight-warning-dark: #92400e;
+
+        --midnight-info: #3b82f6;
+        --midnight-info-light: #dbeafe;
+        --midnight-info-dark: #1e40af;
+
+        --midnight-neutral-50: #f9fafb;
+        --midnight-neutral-100: #f3f4f6;
+        --midnight-neutral-200: #e5e7eb;
+        --midnight-neutral-300: #d1d5db;
+        --midnight-neutral-400: #9ca3af;
+        --midnight-neutral-500: #6b7280;
+        --midnight-neutral-600: #4b5563;
+        --midnight-neutral-700: #374151;
+        --midnight-neutral-800: #1f2937;
+        --midnight-neutral-900: #111827;
+
+        /* Spacing */
+        --midnight-spacing-xs: 0.25rem;
+        --midnight-spacing-sm: 0.5rem;
+        --midnight-spacing-md: 1rem;
+        --midnight-spacing-lg: 1.5rem;
+        --midnight-spacing-xl: 2rem;
+
+        /* Border Radius */
+        --midnight-radius-sm: 0.25rem;
+        --midnight-radius-md: 0.5rem;
+        --midnight-radius-lg: 0.75rem;
+        --midnight-radius-xl: 1rem;
+
+        /* Shadows */
+        --midnight-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --midnight-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --midnight-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+        /* Transitions */
+        --midnight-transition: all 0.2s ease-in-out;
+    }
+}
+
+@layer components {
+    /* Wallet Components */
+    .midnight-wallet {
+        @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm;
+    }
+
+    .midnight-wallet-header {
+        @apply mb-4 flex items-center justify-between border-b border-gray-100 pb-3;
+    }
+
+    .midnight-wallet-title {
+        @apply text-lg font-semibold text-gray-900;
+    }
+
+    .midnight-wallet-address {
+        @apply font-mono text-sm text-gray-600;
+        word-break: break-all;
+    }
+
+    .midnight-wallet-balance {
+        @apply text-2xl font-bold text-gray-900;
+    }
+
+    .midnight-wallet-balance-label {
+        @apply text-sm text-gray-500;
+    }
+
+    /* Transaction Components */
+    .midnight-transaction {
+        @apply rounded-md border border-gray-200 bg-white p-4;
+    }
+
+    .midnight-transaction-hash {
+        @apply font-mono text-xs text-gray-600;
+        word-break: break-all;
+    }
+
+    .midnight-transaction-status {
+        @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-medium;
+    }
+
+    .midnight-transaction-status--pending {
+        @apply bg-yellow-100 text-yellow-800;
+    }
+
+    .midnight-transaction-status--confirmed {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .midnight-transaction-status--failed {
+        @apply bg-red-100 text-red-800;
+    }
+
+    /* Button Components */
+    .midnight-btn {
+        @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .midnight-btn-primary {
+        @apply midnight-btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+    }
+
+    .midnight-btn-secondary {
+        @apply midnight-btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500;
+    }
+
+    .midnight-btn-danger {
+        @apply midnight-btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    }
+
+    /* Loading States */
+    .midnight-loading {
+        @apply flex items-center justify-center;
+    }
+
+    .midnight-spinner {
+        @apply h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600;
+    }
+
+    .midnight-skeleton {
+        @apply animate-pulse rounded bg-gray-200;
+    }
+
+    /* Alert Components */
+    .midnight-alert {
+        @apply rounded-md p-4;
+    }
+
+    .midnight-alert-success {
+        @apply midnight-alert bg-green-50 text-green-800;
+    }
+
+    .midnight-alert-error {
+        @apply midnight-alert bg-red-50 text-red-800;
+    }
+
+    .midnight-alert-warning {
+        @apply midnight-alert bg-yellow-50 text-yellow-800;
+    }
+
+    .midnight-alert-info {
+        @apply midnight-alert bg-blue-50 text-blue-800;
+    }
+
+    /* Form Components */
+    .midnight-input {
+        @apply block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+    }
+
+    .midnight-label {
+        @apply mb-1 block text-sm font-medium text-gray-700;
+    }
+
+    .midnight-form-error {
+        @apply mt-1 text-sm text-red-600;
+    }
+
+    /* Card Components */
+    .midnight-card {
+        @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+    }
+
+    .midnight-card-header {
+        @apply border-b border-gray-200 px-6 py-4;
+    }
+
+    .midnight-card-body {
+        @apply px-6 py-4;
+    }
+
+    .midnight-card-footer {
+        @apply border-t border-gray-200 px-6 py-4;
+    }
+
+    /* Modal Components */
+    .midnight-modal-overlay {
+        @apply fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity;
+    }
+
+    .midnight-modal {
+        @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    }
+
+    .midnight-modal-content {
+        @apply w-full max-w-lg rounded-lg bg-white shadow-xl;
+    }
+
+    .midnight-modal-header {
+        @apply border-b border-gray-200 px-6 py-4;
+    }
+
+    .midnight-modal-body {
+        @apply px-6 py-4;
+    }
+
+    .midnight-modal-footer {
+        @apply border-t border-gray-200 px-6 py-4;
+    }
+}
+
+@layer utilities {
+    /* Custom Animations */
+    @keyframes midnight-pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    .midnight-pulse {
+        animation: midnight-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes midnight-spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .midnight-spin {
+        animation: midnight-spin 1s linear infinite;
+    }
+
+    @keyframes midnight-bounce {
+        0%, 100% {
+            transform: translateY(-25%);
+            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+        }
+        50% {
+            transform: translateY(0);
+            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+    }
+
+    .midnight-bounce {
+        animation: midnight-bounce 1s infinite;
+    }
+
+    /* Utility Classes */
+    .midnight-truncate {
+        @apply overflow-hidden text-ellipsis whitespace-nowrap;
+    }
+
+    .midnight-monospace {
+        font-family: 'Courier New', Courier, monospace;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .midnight-modal-overlay,
+    .midnight-btn,
+    .midnight-loading {
+        display: none;
+    }
+}
+
+/* Dark Mode Support (optional) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --midnight-neutral-50: #111827;
+        --midnight-neutral-100: #1f2937;
+        --midnight-neutral-200: #374151;
+        --midnight-neutral-300: #4b5563;
+        --midnight-neutral-400: #6b7280;
+        --midnight-neutral-500: #9ca3af;
+        --midnight-neutral-600: #d1d5db;
+        --midnight-neutral-700: #e5e7eb;
+        --midnight-neutral-800: #f3f4f6;
+        --midnight-neutral-900: #f9fafb;
+    }
+}

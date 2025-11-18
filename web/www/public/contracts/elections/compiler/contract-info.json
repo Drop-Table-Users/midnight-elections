@@ -1,0 +1,205 @@
+{
+  "circuits": [
+    {
+      "name": "assert_is_admin",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "open_election",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "close_election",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "register_candidate",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "candidate_id",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "cast_vote",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "name": "get_ballot",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "Ballot",
+        "elements": [
+          {
+            "name": "election_id",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "candidate_id",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "credential",
+            "type": {
+              "type-name": "Struct",
+              "name": "SignedCredentialSubject",
+              "elements": [
+                {
+                  "name": "subject",
+                  "type": {
+                    "type-name": "Struct",
+                    "name": "CredentialSubject",
+                    "elements": [
+                      {
+                        "name": "id",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "first_name",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "last_name",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "national_identifier",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "birth_timestamp",
+                        "type": {
+                          "type-name": "Uint",
+                          "maxval": 18446744073709551615
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "signature",
+                  "type": {
+                    "type-name": "Struct",
+                    "name": "Signature",
+                    "elements": [
+                      {
+                        "name": "pk",
+                        "type": {
+                          "type-name": "Struct",
+                          "name": "CurvePoint",
+                          "elements": [
+                            {
+                              "name": "x",
+                              "type": {
+                                "type-name": "Field"
+                              }
+                            },
+                            {
+                              "name": "y",
+                              "type": {
+                                "type-name": "Field"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "R",
+                        "type": {
+                          "type-name": "Struct",
+                          "name": "CurvePoint",
+                          "elements": [
+                            {
+                              "name": "x",
+                              "type": {
+                                "type-name": "Field"
+                              }
+                            },
+                            {
+                              "name": "y",
+                              "type": {
+                                "type-name": "Field"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "s",
+                        "type": {
+                          "type-name": "Field"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "contracts": [
+  ]
+}

@@ -36,28 +36,54 @@ class LocaleMiddleware
         // Set the application locale
         App::setLocale($locale);
 
-        // Store in session for persistence
-        Session::put('locale', $locale);
+        // Store in session for persistence (use appropriate session key)
+        $sessionKey = $this->isAdminRoute($request) ? 'admin_locale' : 'locale';
+        Session::put($sessionKey, $locale);
 
         return $next($request);
     }
 
     /**
-     * Determine the locale based on URL structure:
-     * - /en/* = English
-     * - /* = Slovak (default)
+     * Check if the current request is for an admin route
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return bool
+     */
+    protected function isAdminRoute(Request $request): bool
+    {
+        return $request->is('admin/*') || $request->is('admin');
+    }
+
+    /**
+     * Determine the locale based on:
+     * - Admin routes: Use admin_locale session
+     * - Public routes: Use URL structure (/en/* = English, /* = Slovak)
      *
      * @param  \Illuminate\Http\Request  $request
      * @return string
      */
     protected function determineLocale(Request $request): string
     {
-        // Get the first segment of the URL path
+        // For admin routes, check admin_locale session first
+        if ($this->isAdminRoute($request)) {
+            $adminLocale = Session::get('admin_locale');
+            if ($adminLocale && in_array($adminLocale, $this->availableLocales)) {
+                return $adminLocale;
+            }
+        }
+
+        // For public routes, check URL structure
         $segment = $request->segment(1);
 
         // If URL starts with /en, use English
         if ($segment === 'en') {
             return 'en';
+        }
+
+        // Check regular locale session
+        $sessionLocale = Session::get('locale');
+        if ($sessionLocale && in_array($sessionLocale, $this->availableLocales)) {
+            return $sessionLocale;
         }
 
         // Otherwise use Slovak (default)

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Midnight Proof Server - Required for ZK proof generation
   proof-server:
@@ -15,7 +13,7 @@ services:
   # Elections API - Node.js/Express API for contract interactions
   elections-api:
     build:
-      context: ./contract
+      context: .
       dockerfile: Dockerfile.elections-api
     container_name: elections-api
     ports:
@@ -28,10 +26,10 @@ services:
       - MIDNIGHT_INDEXER_WS=wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws
       - MIDNIGHT_NODE=https://rpc.testnet-02.midnight.network
     volumes:
-      - ./contract:/app
+      - .:/app
       - /app/node_modules
-      - ./contract/midnight-level-db:/app/midnight-level-db
-      - ./contract/contracts:/app/contracts
+      - ./midnight-level-db:/app/midnight-level-db
+      - ./contracts:/app/contracts
     depends_on:
       - proof-server
     restart: unless-stopped
@@ -42,11 +40,11 @@ services:
   # Laravel Web Application
   web:
     build:
-      context: ./web
+      context: ./web/www
       dockerfile: Dockerfile
     container_name: midnight-web
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - APP_ENV=local
       - APP_DEBUG=true
@@ -60,12 +58,11 @@ services:
       - AUTO_MIGRATE=true
       - AUTO_SEED=true
     volumes:
-      - ./web:/app
-      - /app/vendor
+      - ./web/www:/app
       - /app/node_modules
-      - ./web/database/database.sqlite:/app/database/database.sqlite
-      - ./web/laravel-midnight:/app/laravel-midnight:ro
-      - ./web/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ./web/www/database/database.sqlite:/app/database/database.sqlite
+      - ./web/laravel-midnight:/app/vendor/versiontwo/midnight-laravel:ro
+      - ./web/www/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
     depends_on:
       - elections-api
     restart: unless-stopped
@@ -75,9 +72,7 @@ services:
 
   # Queue Worker for background jobs
   queue-worker:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+    image: contract-web:latest
     container_name: midnight-queue
     environment:
       - APP_ENV=local
@@ -87,11 +82,10 @@ services:
       - AUTO_MIGRATE=false
       - AUTO_SEED=false
     volumes:
-      - ./web:/app
-      - /app/vendor
-      - ./web/database/database.sqlite:/app/database/database.sqlite
-      - ./web/laravel-midnight:/app/laravel-midnight:ro
-      - ./web/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ./web/www:/app
+      - ./web/www/database/database.sqlite:/app/database/database.sqlite
+      - ./web/laravel-midnight:/app/vendor/versiontwo/midnight-laravel:ro
+      - ./web/www/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
     depends_on:
       - web
     restart: unless-stopped

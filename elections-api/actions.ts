@@ -513,8 +513,9 @@ export const getElectionResults = async (options: ElectionResultsOptions = {}): 
     let totalVotes = 0n;
 
     // Access the ledger state - vote_counts is a public map
-    if (contractState.data && contractState.data.vote_counts) {
-        const voteCounts = contractState.data.vote_counts;
+    const ledgerData = contractState.data as any;
+    if (ledgerData && ledgerData.vote_counts) {
+        const voteCounts = ledgerData.vote_counts;
 
         // Iterate through all entries in the vote_counts map
         for (const [candidateIdBytes, voteCount] of Object.entries(voteCounts)) {
@@ -580,8 +581,9 @@ export const verifyVote = async (options: VerifyVoteOptions): Promise<VerifyVote
     // voter_nullifiers is a Map<Bytes<32>, Uint<1>> where presence indicates vote was cast
     let voted = false;
 
-    if (contractState.data && contractState.data.voter_nullifiers) {
-        const voterNullifiers = contractState.data.voter_nullifiers;
+    const ledgerData = contractState.data as any;
+    if (ledgerData && ledgerData.voter_nullifiers) {
+        const voterNullifiers = ledgerData.voter_nullifiers;
 
         // Check if this credential hash is in the nullifiers map
         // The key is the credential hash as bytes

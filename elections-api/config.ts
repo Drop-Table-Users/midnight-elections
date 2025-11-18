@@ -37,11 +37,13 @@ export const ELECTION_CONSTRUCTOR_ARGS = {
 // NETWORK CONFIGURATION
 export const NETWORK = NetworkId.TestNet;
 export const INDEXER: string =
-  "https://indexer.testnet-02.midnight.network/api/v1/graphql";
+  process.env.MIDNIGHT_INDEXER || "https://indexer.testnet-02.midnight.network/api/v1/graphql";
 export const INDEXER_WS: string =
-  "wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws";
-export const NODE: string = "https://rpc.testnet-02.midnight.network";
-export const PROOF_SERVER: string = "http://127.0.0.1:6300";
+  process.env.MIDNIGHT_INDEXER_WS || "wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws";
+export const NODE: string =
+  process.env.MIDNIGHT_NODE || "https://rpc.testnet-02.midnight.network";
+export const PROOF_SERVER: string =
+  process.env.PROOF_SERVER || "http://127.0.0.1:6300";
 
 export const NETWORK_CONFIG = {
   INDEXER,

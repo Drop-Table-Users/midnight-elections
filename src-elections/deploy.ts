@@ -15,7 +15,6 @@ import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
 import { WebSocket } from "ws";
 import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath } from "url";
 import * as readline from "readline/promises";
 import * as Rx from "rxjs";
 import { type Wallet } from "@midnight-ntwrk/wallet-api";
@@ -148,10 +147,7 @@ async function main() {
 
     // Load compiled contract files
     console.log("Loading contract...");
-    // Use import.meta.url to get a proper file:// URL and construct relative path
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const contractPath = path.join(__dirname, "..", "contracts");
+    const contractPath = path.join(process.cwd(), "contracts");
     const contractModulePath = path.join(
       contractPath,
       "managed",
@@ -165,9 +161,7 @@ async function main() {
       process.exit(1);
     }
 
-    // Convert to file:// URL for import (works in both Windows and WSL)
-    const contractModuleUrl = new URL(`file://${contractModulePath.replace(/\\/g, '/')}`);
-    const ElectionsModule = await import(contractModuleUrl.href);
+    const ElectionsModule = await import(contractModulePath);
     const witnesses = {
       get_ballot: ({ privateState }: any) => [
         privateState,
@@ -215,7 +209,7 @@ async function main() {
       contractPath,
       "managed",
       config.CONTRACT_CONFIG.CONTRACT_NAME
-    ).replace(/\\/g, '/');
+    );
     const providers = {
       privateStateProvider: levelPrivateStateProvider({
         privateStateStoreName: config.CONTRACT_CONFIG.CONTRACT_STATE_NAME,

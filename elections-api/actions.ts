@@ -19,7 +19,6 @@ import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
 import { WebSocket } from "ws";
 import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath } from "url";
 import * as Rx from "rxjs";
 import * as config from "./config.js";
 
@@ -170,9 +169,7 @@ const createWalletProvider = async (wallet: ManagedWallet) => {
 };
 
 const loadElectionsContractModule = async () => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const contractPath = path.join(__dirname, "..", "contracts");
+  const contractPath = path.join(process.cwd(), "contracts");
   const contractModulePath = path.join(
     contractPath,
     "managed",
@@ -185,20 +182,16 @@ const loadElectionsContractModule = async () => {
     throw new Error("Contract artifact not found. Run npm run compile:elections");
   }
 
-  // Convert to file:// URL for import (works in both Windows and WSL)
-  const contractModuleUrl = new URL(`file://${contractModulePath.replace(/\\/g, '/')}`);
-  return import(contractModuleUrl.href);
+  return import(contractModulePath);
 };
 
 const createProviders = async (walletProvider: any) => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const contractPath = path.join(__dirname, "..", "contracts");
+  const contractPath = path.join(process.cwd(), "contracts");
   const zkConfigPath = path.join(
     contractPath,
     "managed",
     config.CONTRACT_CONFIG.CONTRACT_NAME
-  ).replace(/\\/g, '/');
+  );
 
   return {
     privateStateProvider: levelPrivateStateProvider({
@@ -226,94 +219,56 @@ export interface ActionResult {
   explorerUrl: string;
 }
 
-// Cache wallet globally to avoid rebuilding on every request
-let cachedWallet: ManagedWallet | null = null;
-let cachedWalletSeed: string | null = null;
-
-const getOrBuildWallet = async (walletSeed: string): Promise<ManagedWallet> => {
-  // Reuse existing wallet if seed matches
-  if (cachedWallet && cachedWalletSeed === walletSeed) {
-    console.log("Reusing cached wallet");
-    return cachedWallet;
-  }
-
-  // Close old wallet if seed changed
-  if (cachedWallet && cachedWalletSeed !== walletSeed) {
-    console.log("Wallet seed changed, closing old wallet");
-    await cachedWallet.close();
-    cachedWallet = null;
-  }
-
-  // Build new wallet
-  console.log("Building new wallet");
-  cachedWallet = await buildWallet(walletSeed);
-  cachedWalletSeed = walletSeed;
-  return cachedWallet;
-};
-
-const performAction = async (
-  action: "open" | "close" | "register_candidate" | "cast_vote",
-  options: ActionOptions,
-  actionParams?: any
-) => {
+const performAction = async (action: "open" | "close", options: ActionOptions) => {
   const walletSeed = options.walletSeed ?? config.WALLET_SEED;
   if (!walletSeed) {
     throw new Error("A wallet seed is required.");
   }
 
-  const wallet = await getOrBuildWallet(walletSeed);
-  const walletProvider = await createWalletProvider(wallet);
-  const providers = await createProviders(walletProvider);
-  const contractAddress = loadContractAddress(options.contractAddress);
+  const wallet = await buildWallet(walletSeed);
+  try {
+    const walletProvider = await createWalletProvider(wallet);
+    const providers = await createProviders(walletProvider);
+    const contractAddress = loadContractAddress(options.contractAddress);
 
-  const contractState =
-    await providers.publicDataProvider.queryContractState(contractAddress);
-  if (!contractState) {
-    throw new Error(
-      `No contract state found at ${contractAddress}. Ensure deployment.json is up-to-date and the transaction finalized.`
-    );
+    const contractState =
+      await providers.publicDataProvider.queryContractState(contractAddress);
+    if (!contractState) {
+      throw new Error(
+        `No contract state found at ${contractAddress}. Ensure deployment.json is up-to-date and the transaction finalized.`
+      );
+    }
+
+    const ElectionsModule = await loadElectionsContractModule();
+    const witnesses = {
+      get_ballot: ({ privateState }: any) => [privateState, createEmptyBallot()],
+    };
+    const contractInstance = new ElectionsModule.Contract(witnesses);
+
+    const txInterface = createCircuitCallTxInterface(
+      providers as any,
+      contractInstance as any,
+      contractAddress,
+      config.CONTRACT_CONFIG.CONTRACT_STATE_ID
+    ) as any;
+
+    const result =
+      action === "open"
+        ? await txInterface.open_election()
+        : await txInterface.close_election();
+
+    const txHash = result.public.txHash;
+    const blockHeight = result.public.blockHeight;
+    const explorerUrl = `${config.MEXPLORER_URL}/transaction/0x${txHash}/${blockHeight}`;
+
+    return {
+      txHash,
+      blockHeight,
+      explorerUrl,
+    };
+  } finally {
+    await wallet.close();
   }
-
-  const ElectionsModule = await loadElectionsContractModule();
-  const witnesses = {
-    get_ballot: ({ privateState }: any) => [privateState, actionParams?.ballot ?? createEmptyBallot()],
-  };
-  const contractInstance = new ElectionsModule.Contract(witnesses);
-
-  const txInterface = createCircuitCallTxInterface(
-    providers as any,
-    contractInstance as any,
-    contractAddress,
-    config.CONTRACT_CONFIG.CONTRACT_STATE_ID
-  ) as any;
-
-  let result;
-  switch (action) {
-    case "open":
-      result = await txInterface.open_election();
-      break;
-    case "close":
-      result = await txInterface.close_election();
-      break;
-    case "register_candidate":
-      result = await txInterface.register_candidate(actionParams.candidateId);
-      break;
-    case "cast_vote":
-      result = await txInterface.cast_vote();
-      break;
-    default:
-      throw new Error(`Unknown action: ${action}`);
-  }
-
-  const txHash = result.public.txHash;
-  const blockHeight = result.public.blockHeight;
-  const explorerUrl = `${config.MEXPLORER_URL}/transaction/0x${txHash}/${blockHeight}`;
-
-  return {
-    txHash,
-    blockHeight,
-    explorerUrl,
-  };
 };
 
 export const openElection = (options: ActionOptions = {}): Promise<ActionResult> =>
@@ -321,87 +276,3 @@ export const openElection = (options: ActionOptions = {}): Promise<ActionResult>
 
 export const closeElection = (options: ActionOptions = {}): Promise<ActionResult> =>
   performAction("close", options);
-
-export interface RegisterCandidateOptions extends ActionOptions {
-  candidateId: string;
-}
-
-export const registerCandidate = (options: RegisterCandidateOptions): Promise<ActionResult> => {
-  const { candidateId, ...actionOptions } = options;
-
-  // Convert hex string to Uint8Array
-  const candidateIdHex = candidateId.startsWith("0x") ? candidateId.slice(2) : candidateId;
-  if (candidateIdHex.length !== 64) {
-    throw new Error("candidateId must be a 32-byte hex string (64 hex characters)");
-  }
-
-  const candidateIdBytes = new Uint8Array(
-    candidateIdHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
-  );
-
-  return performAction("register_candidate", actionOptions, { candidateId: candidateIdBytes });
-};
-
-export interface Ballot {
-  election_id: Uint8Array;
-  candidate_id: Uint8Array;
-  credential: {
-    subject: {
-      id: Uint8Array;
-      first_name: Uint8Array;
-      last_name: Uint8Array;
-      national_identifier: Uint8Array;
-      birth_timestamp: bigint;
-    };
-    signature: {
-      pk: { x: bigint; y: bigint };
-      R: { x: bigint; y: bigint };
-      s: bigint;
-    };
-  };
-}
-
-export interface VoteOptions extends ActionOptions {
-  ballot: Ballot;
-}
-
-export const vote = (options: VoteOptions): Promise<ActionResult> => {
-  const { ballot, ...actionOptions } = options;
-  return performAction("cast_vote", actionOptions, { ballot });
-};
-
-export interface WalletStatus {
-  initialized: boolean;
-  synced?: boolean;
-  address?: string;
-  balance?: string;
-  syncProgress?: {
-    sourceGap: number;
-    applyGap: number;
-  };
-}
-
-export const getWalletStatus = async (): Promise<WalletStatus> => {
-  if (!cachedWallet) {
-    return { initialized: false };
-  }
-
-  try {
-    const state = await Rx.firstValueFrom(cachedWallet.state());
-    return {
-      initialized: true,
-      synced: state.syncProgress?.synced ?? false,
-      address: state.address,
-      balance: (state.balances[nativeToken()] ?? 0n).toString(),
-      syncProgress: state.syncProgress?.lag ? {
-        sourceGap: Number(state.syncProgress.lag.sourceGap),
-        applyGap: Number(state.syncProgress.lag.applyGap),
-      } : undefined,
-    };
-  } catch (error) {
-    return {
-      initialized: true,
-      synced: false,
-    };
-  }
-};

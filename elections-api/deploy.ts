@@ -15,6 +15,7 @@ import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
 import { WebSocket } from "ws";
 import * as fs from "fs";
 import * as path from "path";
+import { pathToFileURL } from "url";
 import * as Rx from "rxjs";
 import * as config from "./config.js";
 
@@ -121,7 +122,9 @@ export const deployElectionsContract = async (
     throw new Error("Contract not found! Run: npm run compile");
   }
 
-  const ElectionsModule = await import(contractModulePath);
+  // Convert Windows path to file URL for ESM import
+  const contractModuleUrl = pathToFileURL(contractModulePath).href;
+  const ElectionsModule = await import(contractModuleUrl);
   const witnesses = {
     get_ballot: ({ privateState }: any) => [privateState, createEmptyBallot()],
   };
